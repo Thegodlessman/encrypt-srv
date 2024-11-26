@@ -6,9 +6,12 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import serialization, hashes
 
 # Configuración
-PUBLIC_KEY_PATH = "keys/public_key.pem"
+SERVER_PUBLIC_KEY_PATH = "../servidor/keys/public_key.pem"  # Actualiza con la ruta correcta
 ENCRYPTED_FILE_PATH = "output/encrypted_file.enc"
 SERVER_URL = "https://localhost:5000/upload"
+
+# Tamaño de bloque máximo para RSA (en bytes)
+BLOCK_SIZE = 190  # 2048 bits (RSA key size) / 8 = 256 bytes, pero el tamaño real del bloque es más pequeño
 
 def select_and_encrypt_file():
     file_path = filedialog.askopenfilename(filetypes=[("Word Documents", "*.docx")])
@@ -24,23 +27,31 @@ def select_and_encrypt_file():
     with open(file_path, "rb") as file:
         file_data = file.read()
 
-    # Cargar clave pública
-    with open(PUBLIC_KEY_PATH, "rb") as key_file:
+    # Cargar clave pública del servidor
+    if not os.path.exists(SERVER_PUBLIC_KEY_PATH):
+        result_label.config(text=f"Error: El archivo de clave pública no se encuentra en {SERVER_PUBLIC_KEY_PATH}")
+        return
+    
+    with open(SERVER_PUBLIC_KEY_PATH, "rb") as key_file:
         public_key = serialization.load_pem_public_key(key_file.read())
 
     # Dividir archivo en bloques y cifrar
-    BLOCK_SIZE = 190
     blocks = [file_data[i:i + BLOCK_SIZE] for i in range(0, len(file_data), BLOCK_SIZE)]
     encrypted_data = b""
     for block in blocks:
-        encrypted_data += public_key.encrypt(
-            block,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None
+        try:
+            encrypted_data += public_key.encrypt(
+                block,
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
             )
-        )
+        except ValueError as e:
+            result_label.config(text=f"Error al cifrar el archivo: {e}")
+            print(e)
+            return
 
     # Guardar archivo cifrado
     os.makedirs(os.path.dirname(ENCRYPTED_FILE_PATH), exist_ok=True)
@@ -49,7 +60,7 @@ def select_and_encrypt_file():
 
     # Enviar al servidor
     with open(ENCRYPTED_FILE_PATH, "rb") as encrypted_file:
-        response = requests.post(SERVER_URL, files={"file": encrypted_file}, verify="../certificados/cert.pem")
+        response = requests.post(SERVER_URL, files={"file": encrypted_file}, verify=r"C:\Users\luisc\Documents\Seguridad\servidor\certificados\cert.pem")
         if response.status_code == 200:
             result_label.config(text="Archivo enviado y procesado exitosamente.")
         else:
