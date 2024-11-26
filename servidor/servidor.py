@@ -5,7 +5,7 @@ from cryptography.hazmat.primitives import serialization, hashes
 
 # Configuración
 PRIVATE_KEY_PATH = "servidor/keys/private_key.pem"  # Clave privada del servidor
-OUTPUT_PATH = "output/decrypted_file.docx"
+OUTPUT_PATH = "servidor/output/decrypted_file.docx"
 
 app = Flask(__name__)
 
@@ -26,7 +26,7 @@ def upload_file():
 
     # Descifrar en bloques
     BLOCK_SIZE = 256  # El tamaño de bloque debe coincidir con el tamaño de la clave RSA
-    decrypted_data = b""
+    decrypted_data = b""  # Almacena el archivo descifrado
     for i in range(0, len(encrypted_data), BLOCK_SIZE):
         block = encrypted_data[i:i + BLOCK_SIZE]
         decrypted_data += private_key.decrypt(
@@ -46,5 +46,5 @@ def upload_file():
     return jsonify({"message": "Archivo procesado y descifrado con éxito."}), 200
 
 if __name__ == '__main__':
-    # El servidor necesita HTTPS para cifrado
-    app.run(ssl_context=("certificados/cert.pem", "certificados/key.pem"))
+    # El servidor necesita HTTPS para cifrado, utilizando los certificados de mkcert
+    app.run(ssl_context=("certificados/localhost.pem", "certificados/localhost-key.pem"), host='localhost', port=5000)

@@ -6,7 +6,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import serialization, hashes
 
 # Configuración
-SERVER_PUBLIC_KEY_PATH = "../servidor/keys/public_key.pem"  # Actualiza con la ruta correcta
+SERVER_PUBLIC_KEY_PATH = "../servidor/keys/public_key.pem"  # Ruta correcta del archivo de clave pública del servidor
 ENCRYPTED_FILE_PATH = "output/encrypted_file.enc"
 SERVER_URL = "https://localhost:5000/upload"
 
@@ -37,7 +37,7 @@ def select_and_encrypt_file():
 
     # Dividir archivo en bloques y cifrar
     blocks = [file_data[i:i + BLOCK_SIZE] for i in range(0, len(file_data), BLOCK_SIZE)]
-    encrypted_data = b""
+    encrypted_data = b""  # Almacena los datos cifrados
     for block in blocks:
         try:
             encrypted_data += public_key.encrypt(
@@ -58,9 +58,11 @@ def select_and_encrypt_file():
     with open(ENCRYPTED_FILE_PATH, "wb") as encrypted_file:
         encrypted_file.write(encrypted_data)
 
-    # Enviar al servidor
+    # Enviar al servidor utilizando el certificado de mkcert para verificar la conexión HTTPS
     with open(ENCRYPTED_FILE_PATH, "rb") as encrypted_file:
-        response = requests.post(SERVER_URL, files={"file": encrypted_file}, verify=r"C:\Users\luisc\Documents\Seguridad\servidor\certificados\cert.pem")
+        response = requests.post(SERVER_URL, files={"file": encrypted_file}, 
+                                verify=False)  # Usar el archivo certificado mkcert
+    
         if response.status_code == 200:
             result_label.config(text="Archivo enviado y procesado exitosamente.")
         else:
